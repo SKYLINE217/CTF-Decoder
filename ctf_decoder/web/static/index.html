@@ -7,7 +7,7 @@
   <meta name="description" content="Adaptive CTF decoding toolkit with self-learning engine, brute-force mode, code solving, and flag detection.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=3">
+  <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
 <div id="app" v-cloak>
@@ -32,6 +32,20 @@
 
   <!-- ── macOS Desktop / Floating Window Shell ────────────────────────── -->
   <div class="macos-desktop">
+
+    <!-- macOS Desktop Widget Clock -->
+    <div class="desktop-widget-clock">
+      <div class="widget-time">{{ widgetTime }} <span>{{ widgetAmPm }}</span></div>
+      <div class="widget-date">{{ widgetDate }}</div>
+      <div class="widget-player">
+        <span class="player-icon">⚡</span>
+        <div class="player-details">
+          <div class="player-title">CTF Autopilot Active</div>
+          <div class="player-subtitle">Decoders operational</div>
+        </div>
+      </div>
+    </div>
+
     <div class="macos-window">
       
       <!-- Title Bar with traffic lights -->
@@ -571,9 +585,12 @@ createApp({
     const memory         = ref(null)
     const isProcessing   = ref(false)
     const detectionHints = ref([])
-    const elapsed        = ref(null)
+     const elapsed        = ref(null)
     const toast          = ref({ show: false, msg: '', isError: false })
     const liveTime       = ref('')
+    const widgetTime     = ref('')
+    const widgetAmPm     = ref('')
+    const widgetDate     = ref('')
 
     let detectTimer = null
 
@@ -603,6 +620,18 @@ createApp({
       hr = hr ? hr : 12 // the hour '0' should be '12'
       min = min < 10 ? '0' + min : min
       liveTime.value = `${day} ${hr}:${min} ${ampm}`
+
+      // Update widget values
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      const daysFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      const month = months[d.getMonth()]
+      const dateNum = d.getDate()
+      const year = d.getFullYear()
+      const dayFull = daysFull[d.getDay()]
+      
+      widgetTime.value = `${hr}:${min}`
+      widgetAmPm.value = ampm.toLowerCase()
+      widgetDate.value = `Today is ${dayFull}, ${dateNum} ${month}, ${year}.`
     }
 
     const strToB64 = s => {
@@ -793,6 +822,7 @@ createApp({
       currentTab, currentTabLabel, inputText, mode, selectedCodec, bruteDepth, bruteTimeout,
       codeText, codeLanguage, runDynamically, codeFlagPattern, codeResult, isCodeProcessing,
       codecs, result, memory, isProcessing, detectionHints, elapsed, toast, liveTime, inputBytes,
+      widgetTime, widgetAmPm, widgetDate,
       run, runCodeSolver, clearAll, clearCode, copy, refreshMemory, sendFeedback, decayMemory, clearMemory,
       onInputChange, truncate, scoreColor,
     }

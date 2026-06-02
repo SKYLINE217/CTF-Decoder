@@ -894,3 +894,98 @@ html, body {
   color: var(--apple-red);
 }
 
+
+/* ── Desktop Widget Clock ────────────────────────────────────────────── */
+.desktop-widget-clock {
+  position: absolute;
+  left: 60px;
+  top: calc(50% - 150px);
+  color: #ffffff;
+  z-index: 5;
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  animation: widget-fade-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes widget-fade-in {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.widget-time {
+  font-size: 96px;
+  font-weight: 700;
+  letter-spacing: -3px;
+  line-height: 0.9;
+  display: flex;
+  align-items: baseline;
+}
+
+.widget-time span {
+  font-size: 32px;
+  font-weight: 500;
+  margin-left: 12px;
+  text-transform: lowercase;
+  letter-spacing: -1px;
+}
+
+.widget-date {
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 14px;
+  opacity: 0.95;
+  letter-spacing: -0.5px;
+}
+
+.widget-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  width: max-content;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.player-icon {
+  font-size: 20px;
+  animation: pulse-music 2s infinite ease-in-out;
+}
+
+@keyframes pulse-music {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.player-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+}
+
+.player-subtitle {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Hide widget on narrower viewports to prevent overlap with the central window */
+@media (max-width: 1650px) {
+  .desktop-widget-clock {
+    display: none;
+  }
+}
+
