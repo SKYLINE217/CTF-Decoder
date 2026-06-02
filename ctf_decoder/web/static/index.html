@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CTF Decoder — macOS Workspace</title>
+  <meta name="description" content="Adaptive CTF decoding toolkit with self-learning engine, brute-force mode, code solving, and flag detection.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+<div id="app" v-cloak>
+
+  <!-- ── macOS Menu Bar ────────────────────────────────────────────────── -->
+  <div class="macos-menubar">
+    <div class="menubar-left">
+      <span class="menubar-item bold apple-icon"></span>
+      <span class="menubar-item bold">CTF Decoder</span>
+      <span class="menubar-item">File</span>
+      <span class="menubar-item">Edit</span>
+      <span class="menubar-item">View</span>
+      <span class="menubar-item">Window</span>
+      <span class="menubar-item">Help</span>
+    </div>
+    <div class="menubar-right">
+      <span class="menubar-item">📶</span>
+      <span class="menubar-item">🔋 100%</span>
+      <span class="menubar-item">{{ liveTime }}</span>
+    </div>
+  </div>
+
+  <!-- ── macOS Desktop / Floating Window Shell ────────────────────────── -->
+  <div class="macos-desktop">
+    <div class="macos-window">
+      
+      <!-- Title Bar with traffic lights -->
+      <div class="window-titlebar">
+        <div class="window-controls">
+          <div class="control-dot close" title="Close"></div>
+          <div class="control-dot minimize" title="Minimize"></div>
+          <div class="control-dot maximize" title="Zoom"></div>
+        </div>
+        <div class="window-title">
+          CTF Decoder — {{ currentTabLabel }}
+        </div>
+        <div class="window-actions">
+          <div class="window-status-pill" :class="{ busy: isProcessing || isCodeProcessing }">
+            <span class="pulse-circle"></span>
+            <span>{{ (isProcessing || isCodeProcessing) ? 'BUSY' : 'READY' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Workspace -->
+      <div class="window-workspace">
+        
+        <!-- Sidebar Navigation -->
+        <nav class="app-sidebar">
+          <div class="sidebar-group">
+            <div class="sidebar-group-title">Decoder Modules</div>
+            <div class="sidebar-menu">
+              <a href="#" class="sidebar-item" :class="{ active: currentTab === 'auto-decoder' }" @click="currentTab = 'auto-decoder'">
+                <span class="sidebar-icon">⚡</span> Auto / Manual
+              </a>
+              <a href="#" class="sidebar-item" :class="{ active: currentTab === 'code-solver' }" @click="currentTab = 'code-solver'">
+                <span class="sidebar-icon">💻</span> Code Solver
+              </a>
+              <a href="#" class="sidebar-item" :class="{ active: currentTab === 'memory' }" @click="currentTab = 'memory'">
+                <span class="sidebar-icon">🧠</span> Learned Memory
+              </a>
+            </div>
+          </div>
+
+          <div class="sidebar-group" style="margin-top: auto;">
+            <div class="sidebar-group-title">Session Summary</div>
+            <div class="mac-card" style="padding: 10px; font-size: 11px;">
+              <div style="color: var(--text-bright); font-weight: 600; margin-bottom: 4px;">Platform Target</div>
+              <div style="color: var(--apple-blue);" v-if="memory && memory.platform_hint">📍 {{ memory.platform_hint }}</div>
+              <div style="color: var(--text-dim);" v-else>No target detected</div>
+              
+              <div style="color: var(--text-bright); font-weight: 600; margin-top: 8px; margin-bottom: 4px;">Solve History</div>
+              <div style="color: var(--text-dim);" v-if="memory">{{ memory.recent_solves }} solves recorded</div>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Dynamic Content Panes Container -->
+        <div class="app-content-container">
+
+          <!-- ── TAB 1: AUTO / MANUAL DECODER ──────────────────────────── -->
+          <div class="workspace-panes" v-if="currentTab === 'auto-decoder'">
+            
+            <!-- Left: Input & Options -->
+            <div class="pane pane-left">
+              <div class="pane-titlebar">
+                <span>INPUT DATA</span>
+                <span class="pane-badge" v-if="inputBytes > 0">{{ inputBytes }} bytes</span>
+              </div>
+              <div class="pane-content">
+                <!-- Textarea -->
+                <div class="code-editor-wrap">
+                  <div class="editor-header">
+                    <span>RAW BYTES</span>
+                    <span>UTF-8</span>
+                  </div>
+                  <textarea
+                    class="mac-textarea"
+                    v-model="inputText"
+                    placeholder="Paste encoded challenge string here...&#10;&#10;Examples:&#10;  SGVsbG8gV29ybGQ=   (base64)&#10;  68656c6c6f          (hex)&#10;  Uryyb Jbeyq         (rot13)"
+                    spellcheck="false"
+                    @input="onInputChange"
+                  ></textarea>
+                </div>
+
+                <!-- Auto hints -->
+                <div class="mac-card" v-if="detectionHints.length > 0">
+                  <div class="mac-card-title">Live Detection Confidence</div>
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div v-for="h in detectionHints.slice(0, 4)" :key="h.codec" style="display: flex; align-items: center; justify-content: space-between; font-size: 11px;">
+                      <span style="font-family: var(--mono); color: var(--text-bright);">{{ h.codec }}</span>
+                      <div style="flex: 1; margin: 0 10px; background: rgba(255,255,255,0.06); height: 5px; border-radius: 2px; overflow: hidden;">
+                        <div :style="{ width: (h.confidence * 100) + '%' }" style="background: var(--apple-blue); height: 100%;"></div>
+                      </div>
+                      <span style="font-family: var(--mono); color: var(--text-dim);">{{ (h.confidence * 100).toFixed(0) }}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Settings -->
+                <div class="mac-card">
+                  <div class="mac-card-title">Decoder Settings</div>
+                  
+                  <div class="tab-header-buttons">
+                    <button class="tab-btn" :class="{ active: mode === 'auto' }" @click="mode = 'auto'">Auto</button>
+                    <button class="tab-btn" :class="{ active: mode === 'manual' }" @click="mode = 'manual'">Manual</button>
+                    <button class="tab-btn" :class="{ active: mode === 'brute' }" @click="mode = 'brute'">Brute Force</button>
+                  </div>
+
+                  <!-- Manual Codec Selector -->
+                  <div v-if="mode === 'manual'" style="margin-top: 10px;">
+                    <label class="mac-label">SELECT TARGET CODEC</label>
+                    <select v-model="selectedCodec" class="mac-select">
+                      <option v-for="c in codecs" :key="c.name" :value="c.name">{{ c.name }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Brute force configuration -->
+                  <div v-if="mode === 'brute'" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <div>
+                      <label class="mac-label">MAX DEPTH</label>
+                      <input type="number" v-model.number="bruteDepth" min="1" max="6" class="mac-input">
+                    </div>
+                    <div>
+                      <label class="mac-label">TIMEOUT (SEC)</label>
+                      <input type="number" v-model.number="bruteTimeout" min="1" max="60" class="mac-input">
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button class="btn-primary" @click="run" :disabled="!inputText.trim() || isProcessing">
+                    <span v-if="isProcessing" class="spinner">◌</span>
+                    <span v-else>⚡</span>
+                    {{ isProcessing ? 'Decoding...' : 'Run Decode' }}
+                  </button>
+                  <button class="btn-secondary" @click="clearAll" style="width: 80px;">Clear</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Results -->
+            <div class="pane">
+              <div class="pane-titlebar">
+                <span>DECODER RESULTS</span>
+                <span class="pane-badge" v-if="elapsed !== null">{{ elapsed }}s elapsed</span>
+              </div>
+              <div class="pane-content">
+                
+                <!-- Awaiting input -->
+                <div class="empty-placeholder" v-if="!result && !isProcessing">
+                  <div class="placeholder-icon">🗂</div>
+                  <div class="placeholder-title">Awaiting Payload</div>
+                  <p class="placeholder-text">Input some bytes on the left side and click Run Decode.</p>
+                </div>
+
+                <!-- Processing state -->
+                <div class="loading-indicator" v-if="isProcessing">
+                  <div class="progress-track">
+                    <div class="progress-fill"></div>
+                  </div>
+                  <div>Analyzing structural entropy & running algorithms...</div>
+                </div>
+
+                <!-- Solve data -->
+                <div class="results-wrapper" v-if="result && !isProcessing">
+                  
+                  <!-- Error banner -->
+                  <div class="error-banner" v-if="!result.success">
+                    <span class="err-icon">⚠️</span> {{ result.error }}
+                  </div>
+
+                  <!-- Captured flags -->
+                  <div v-if="result.flags && result.flags.length">
+                    <div class="mac-flag-card" v-for="flag in result.flags" :key="flag.value">
+                      <span class="flag-badge">FLAG FOUND</span>
+                      <span class="flag-text">{{ flag.value }}</span>
+                      <button class="card-action-btn" @click="copy(flag.value)" title="Copy flag">Copy</button>
+                    </div>
+                  </div>
+
+                  <!-- Plaintext Output Box -->
+                  <div class="output-preview-card" v-if="result.success">
+                    <div class="output-card-header">
+                      <span>DECODED PLAINTEXT</span>
+                      <button class="copy-btn-sm" @click="copy(result.final_output_str)">Copy</button>
+                    </div>
+                    <pre class="output-card-body">{{ result.final_output_str }}</pre>
+                  </div>
+
+                  <!-- Decode Steps -->
+                  <div v-if="result.steps && result.steps.length > 1">
+                    <div class="section-title">DECODING ROUTE</div>
+                    <div class="mac-chain-wrapper">
+                      <div class="mac-chain-step" v-for="(step, i) in result.steps" :key="i">
+                        <span class="chain-idx">{{ i + 1 }}</span>
+                        <div class="chain-info">
+                          <div class="chain-codec-name">{{ step.codec }}</div>
+                          <div class="chain-output-preview">{{ truncate(step.output_str, 80) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Plaintext Confidence -->
+                  <div class="mac-card" v-if="result.score">
+                    <div class="mac-card-title">Plaintext Validation Metrics</div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                      <span style="font-weight: 600; font-size: 13px;">Total Score</span>
+                      <span :style="{ color: scoreColor(result.score.total) }" style="font-weight: 700; font-size: 14px;">
+                        {{ (result.score.total * 100).toFixed(1) }}%
+                      </span>
+                    </div>
+                    <div class="mac-score-bar-container">
+                      <div class="mac-score-bar-fill" :style="{ width: (result.score.total * 100) + '%', background: scoreColor(result.score.total) }"></div>
+                    </div>
+
+                    <div class="score-legend">
+                      <div class="legend-item">
+                        <span>ASCII Ratio</span>
+                        <span style="font-weight: 600;">{{ (result.score.printable_ascii * 100).toFixed(0) }}%</span>
+                      </div>
+                      <div class="legend-item">
+                        <span>English Freq</span>
+                        <span style="font-weight: 600;">{{ (result.score.english_freq * 100).toFixed(0) }}%</span>
+                      </div>
+                      <div class="legend-item">
+                        <span>Common Bigrams</span>
+                        <span style="font-weight: 600;">{{ (result.score.bigram_freq * 100).toFixed(0) }}%</span>
+                      </div>
+                      <div class="legend-item">
+                        <span>Word Matches</span>
+                        <span style="font-weight: 600;">{{ (result.score.word_match * 100).toFixed(0) }}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Feedback Row -->
+                  <div class="feedback-row" v-if="result.success && result.steps && result.steps.length">
+                    <span class="feedback-label">Feedback: Was this decode target successful?</span>
+                    <button class="feedback-yes" @click="sendFeedback(result.steps[0].codec, true)">Yes</button>
+                    <button class="feedback-no" @click="sendFeedback(result.steps[0].codec, false)">No</button>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ── TAB 2: CODE SCRIPT SOLVER ─────────────────────────────── -->
+          <div class="workspace-panes" v-if="currentTab === 'code-solver'">
+            
+            <!-- Left: Script Input & Settings -->
+            <div class="pane pane-left">
+              <div class="pane-titlebar">
+                <span>PASTE SCRIPT</span>
+                <span class="pane-badge">C, Java, Python</span>
+              </div>
+              <div class="pane-content">
+                
+                <div class="code-editor-wrap">
+                  <div class="editor-header">
+                    <span>SOURCE CODE</span>
+                    <span>MONOSPACE</span>
+                  </div>
+                  <textarea
+                    class="mac-textarea"
+                    v-model="codeText"
+                    placeholder="Paste script containing ciphers or generating encodings...&#10;&#10;Examples:&#10;  - Python script printing Base64 outputs&#10;  - C program containing Hex/byte arrays&#10;  - Java code with embedded flags in variables"
+                    spellcheck="false"
+                    style="color: var(--apple-green);"
+                  ></textarea>
+                </div>
+
+                <!-- Settings Card -->
+                <div class="mac-card">
+                  <div class="mac-card-title">Code Settings</div>
+                  
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                      <label class="mac-label">LANGUAGE</label>
+                      <select v-model="codeLanguage" class="mac-select">
+                        <option value="python">Python</option>
+                        <option value="c">C / C++</option>
+                        <option value="java">Java</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mac-label">EXECUTION MODE</label>
+                      <div class="checkbox-row" style="margin-top: 8px;">
+                        <input type="checkbox" id="run-dyn" v-model="runDynamically">
+                        <label for="run-dyn">Execute code</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="mac-label">CUSTOM FLAG PATTERN (OPTIONAL)</label>
+                    <input type="text" v-model="codeFlagPattern" placeholder="e.g. MYCTF\{[A-Za-z0-9_]+\}" class="mac-input">
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: auto;">
+                  <button class="btn-primary" @click="runCodeSolver" :disabled="!codeText.trim() || isCodeProcessing">
+                    <span v-if="isCodeProcessing" class="spinner">◌</span>
+                    <span v-else>▶</span>
+                    {{ isCodeProcessing ? 'Processing Code...' : 'Solve Script Structure' }}
+                  </button>
+                  <button class="btn-secondary" @click="clearCode" style="width: 80px;">Clear</button>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Right: Code Solver Outputs -->
+            <div class="pane">
+              <div class="pane-titlebar">
+                <span>SOLVER OUTPUT</span>
+                <span class="pane-badge" v-if="codeResult && codeResult.solves">
+                  {{ codeResult.solves.length }} solved
+                </span>
+              </div>
+              <div class="pane-content">
+                
+                <!-- Empty State -->
+                <div class="empty-placeholder" v-if="!codeResult && !isCodeProcessing">
+                  <div class="placeholder-icon">💻</div>
+                  <div class="placeholder-title">Awaiting Script Analysis</div>
+                  <p class="placeholder-text">Paste a code script, configure options, and trigger the script solver.</p>
+                </div>
+
+                <!-- Processing state -->
+                <div class="loading-indicator" v-if="isCodeProcessing">
+                  <div class="progress-track">
+                    <div class="progress-fill"></div>
+                  </div>
+                  <div>Compiling, executing, or scanning literals...</div>
+                </div>
+
+                <!-- Result Layout -->
+                <div class="results-wrapper" v-if="codeResult && !isCodeProcessing">
+                  
+                  <!-- Solved Flags -->
+                  <div v-if="codeResult.solves && codeResult.solves.length">
+                    <div class="section-title">RESOLVED FLAGS</div>
+                    <div class="mac-flag-card" v-for="(solve, i) in codeResult.solves" :key="i">
+                      <span class="flag-badge">SOLVE #{{ i+1 }}</span>
+                      <span class="flag-text">{{ solve.flag }}</span>
+                      <button class="card-action-btn" @click="copy(solve.flag)">Copy</button>
+                    </div>
+                  </div>
+
+                  <div class="error-banner" v-if="codeResult.success === false && (!codeResult.solves || !codeResult.solves.length)">
+                    <span>⚠️</span> No flags were recovered. Double-check compilation or dynamic execution output logs.
+                  </div>
+
+                  <!-- Logs Console -->
+                  <div class="collapsible-console" v-if="codeResult.logs">
+                    <div class="console-header">
+                      <span>COMPILATION & EXECUTION LOGS</span>
+                    </div>
+                    <pre class="console-body">{{ codeResult.logs }}</pre>
+                  </div>
+
+                  <!-- Extracted Literals -->
+                  <div v-if="codeResult.extracted_literals && codeResult.extracted_literals.length">
+                    <div class="section-title">STATICALLY EXTRACTED LITERALS ({{ codeResult.extracted_literals.length }})</div>
+                    <div class="mac-card" style="padding: 10px; max-height: 180px; overflow-y: auto;">
+                      <div v-for="lit in codeResult.extracted_literals" :key="lit" style="font-family: var(--mono); font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); word-break: break-all; color: var(--text-dim);">
+                        • "{{ lit }}"
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Step chains for code solves -->
+                  <div v-if="codeResult.solves && codeResult.solves.length">
+                    <div class="section-title">DECODING ROUTINES</div>
+                    <div v-for="(solve, idx) in codeResult.solves" :key="idx" style="margin-bottom: 12px; background: rgba(0,0,0,0.15); border-radius: 6px; padding: 10px;">
+                      <div style="font-weight: 600; font-size: 11px; margin-bottom: 6px; color: var(--text-bright);">
+                        Solve #{{ idx+1 }} Candidate ({{ solve.candidate.type }})
+                      </div>
+                      <div class="mac-chain-wrapper">
+                        <div class="mac-chain-step" v-for="(step, sIdx) in solve.steps" :key="sIdx">
+                          <span class="chain-idx">{{ sIdx+1 }}</span>
+                          <div class="chain-info">
+                            <span class="chain-codec-name">{{ step.codec }}</span>
+                            <div class="chain-output-preview">{{ truncate(step.output_str, 80) }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ── TAB 3: ADAPTIVE MEMORY DASHBOARD ──────────────────────── -->
+          <div class="workspace-panes" v-if="currentTab === 'memory'">
+            
+            <!-- Spanned/Full pane -->
+            <div class="pane">
+              <div class="pane-titlebar">
+                <span>ADAPTIVE SYSTEM MEMORY</span>
+                <span class="pane-badge" v-if="memory">Priors Count: {{ memory.priors.length }}</span>
+              </div>
+              
+              <div class="pane-content" style="max-width: 800px; margin: 0 auto; width: 100%;">
+                
+                <div class="memory-dashboard" v-if="memory">
+                  
+                  <!-- Session Info Grid -->
+                  <div class="session-stat-grid">
+                    <div class="stat-box">
+                      <div class="mac-card-title" style="margin-bottom: 0;">Session ID</div>
+                      <div class="stat-val blue" style="font-size: 14px; font-family: var(--mono); word-break: break-all; margin-top: 10px;">
+                        {{ memory.session.split('|')[0].trim() }}
+                      </div>
+                    </div>
+                    <div class="stat-box">
+                      <div class="mac-card-title" style="margin-bottom: 0;">Recent Solves</div>
+                      <div class="stat-val green">{{ memory.recent_solves }}</div>
+                    </div>
+                    <div class="stat-box">
+                      <div class="mac-card-title" style="margin-bottom: 0;">Platform Guess</div>
+                      <div class="stat-val" style="font-size: 15px; color: var(--apple-yellow); margin-top: 10px;">
+                        {{ memory.platform_hint || 'Undetermined' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Priors List -->
+                  <div class="mac-card">
+                    <div class="mac-card-title">Learned Success Priors (BETA-BINOMIAL DISTRIBUTION)</div>
+                    <div class="memory-priors-scroll">
+                      <table class="memory-table">
+                        <thead>
+                          <tr>
+                            <th>CODEC</th>
+                            <th>EXPECTED VALUE</th>
+                            <th>ALPHA</th>
+                            <th>BETA</th>
+                            <th>LAST SOLVED</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="p in memory.priors" :key="p.codec">
+                            <td style="font-family: var(--mono); font-weight: 700; color: var(--apple-blue);">{{ p.codec }}</td>
+                            <td>
+                              <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="width: 50px; background: rgba(255,255,255,0.06); height: 4px; border-radius: 2px; overflow: hidden;">
+                                  <div :style="{ width: (p.success_rate * 100) + '%' }" style="background: var(--apple-green); height: 100%;"></div>
+                                </div>
+                                <span>{{ (p.success_rate * 100).toFixed(1) }}%</span>
+                              </div>
+                            </td>
+                            <td style="font-family: var(--mono);">{{ p.alpha.toFixed(1) }}</td>
+                            <td style="font-family: var(--mono);">{{ p.beta.toFixed(1) }}</td>
+                            <td style="color: var(--text-dim);">{{ p.last_updated }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- Chain templates -->
+                  <div class="mac-card" v-if="memory.templates && memory.templates.length">
+                    <div class="mac-card-title">LEARNED CODEC CHAIN TEMPLATES</div>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                      <div class="chain-template" v-for="t in memory.templates" :key="t.chain.join()">
+                        <span class="chain-template-chain">{{ t.chain.join(' → ') }}</span>
+                        <div style="display: flex; gap: 10px; font-size: 10px; color: var(--text-dim);">
+                          <span>Uses: {{ t.frequency }}</span>
+                          <span style="color: var(--apple-green);">Success: {{ (t.success_rate * 100).toFixed(0) }}%</span>
+                          <span v-if="t.platform">Target: {{ t.platform }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Memory Ops -->
+                  <div class="mac-card" style="border-color: rgba(255,59,48,0.2); background: rgba(255,59,48,0.02);">
+                    <div class="mac-card-title" style="color: var(--apple-red);">Dangerous Actions</div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                      <button class="btn-secondary" @click="decayMemory" style="border-color: rgba(255,149,0,0.3); color: var(--apple-orange);">Apply Time Decay</button>
+                      <button class="btn-secondary" @click="clearMemory" style="border-color: rgba(255,59,48,0.3); color: var(--apple-red);">Wipe Memory Store</button>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── macOS Alert Toast Notification ────────────────────────────────── -->
+  <div class="macos-toast" :class="{ show: toast.show, error: toast.isError }" v-if="toast.show">
+    <span>ℹ️</span>
+    <span>{{ toast.msg }}</span>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+const { createApp, ref, computed, onMounted, watch } = Vue
+
+createApp({
+  setup() {
+    // ── State variables ───────────────────────────────────────
+    const currentTab     = ref('auto-decoder')
+    const inputText      = ref('')
+    const mode           = ref('auto')
+    const selectedCodec  = ref('base64')
+    const bruteDepth     = ref(3)
+    const bruteTimeout   = ref(10)
+    
+    // Code solver state
+    const codeText        = ref('')
+    const codeLanguage    = ref('python')
+    const runDynamically  = ref(false)
+    const codeFlagPattern = ref('')
+    const codeResult      = ref(null)
+    const isCodeProcessing= ref(false)
+    
+    const codecs         = ref([])
+    const result         = ref(null)
+    const memory         = ref(null)
+    const isProcessing   = ref(false)
+    const detectionHints = ref([])
+    const elapsed        = ref(null)
+    const toast          = ref({ show: false, msg: '', isError: false })
+    const liveTime       = ref('')
+
+    let detectTimer = null
+
+    // Compute title bar text
+    const currentTabLabel = computed(() => {
+      if (currentTab.value === 'auto-decoder') return 'Auto / Manual Decoders'
+      if (currentTab.value === 'code-solver') return 'Code Script Solver'
+      if (currentTab.value === 'memory') return 'Adaptive Memory Store'
+      return 'Engine'
+    })
+
+    const inputBytes = computed(() => {
+      try {
+        return new TextEncoder().encode(inputText.value).length
+      } catch { return 0 }
+    })
+
+    // ── Helper utils ──────────────────────────────────────────
+    const updateTime = () => {
+      const d = new Date()
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      const day = days[d.getDay()]
+      let hr = d.getHours()
+      let min = d.getMinutes()
+      const ampm = hr >= 12 ? 'PM' : 'AM'
+      hr = hr % 12
+      hr = hr ? hr : 12 // the hour '0' should be '12'
+      min = min < 10 ? '0' + min : min
+      liveTime.value = `${day} ${hr}:${min} ${ampm}`
+    }
+
+    const strToB64 = s => {
+      let parts = s.split(/(\\x[0-9a-fA-F]{2})/);
+      let out = [];
+      for (let p of parts) {
+        if (/^\\x[0-9a-fA-F]{2}$/.test(p)) {
+          out.push(parseInt(p.slice(2), 16));
+        } else {
+          let bytes = new TextEncoder().encode(p);
+          for (let b of bytes) out.push(b);
+        }
+      }
+      let binary = '';
+      let chunks = new Uint8Array(out);
+      for (let i = 0; i < chunks.byteLength; i++) {
+        binary += String.fromCharCode(chunks[i]);
+      }
+      return btoa(binary);
+    }
+
+    const truncate = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : s
+
+    const scoreColor = v => {
+      if (v >= 0.85) return '#34c759' // Green
+      if (v >= 0.6)  return '#ff9500' // Orange
+      return '#ff3b30'               // Red
+    }
+
+    const showToast = (msg, isError = false) => {
+      toast.value = { show: true, msg, isError }
+      setTimeout(() => { toast.value.show = false }, 3000)
+    }
+
+    const copy = async text => {
+      try {
+        await navigator.clipboard.writeText(text)
+        showToast('Copied to clipboard!')
+      } catch {
+        showToast('Copy failed', true)
+      }
+    }
+
+    // ── API communications ─────────────────────────────────────
+    const fetchCodecs = async () => {
+      const r = await fetch('/api/codecs')
+      const d = await r.json()
+      codecs.value = d.codecs
+    }
+
+    const refreshMemory = async () => {
+      const r = await fetch('/api/memory')
+      memory.value = await r.json()
+    }
+
+    const onInputChange = () => {
+      if (!inputText.value.trim()) { detectionHints.value = []; return }
+      clearTimeout(detectTimer)
+      detectTimer = setTimeout(runDetect, 350)
+    }
+
+    const runDetect = async () => {
+      if (!inputText.value.trim()) return
+      try {
+        const r = await fetch('/api/detect', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ data_b64: strToB64(inputText.value) }),
+        })
+        const d = await r.json()
+        detectionHints.value = d.candidates || []
+      } catch { detectionHints.value = [] }
+    }
+
+    const run = async () => {
+      if (!inputText.value.trim() || isProcessing.value) return
+      isProcessing.value = true
+      result.value       = null
+      elapsed.value      = null
+      const t0 = performance.now()
+
+      const b64 = strToB64(inputText.value)
+      let endpoint = '/api/decode'
+      let body     = { data_b64: b64 }
+
+      if (mode.value === 'brute') {
+        endpoint    = '/api/brute'
+        body.depth   = bruteDepth.value
+        body.timeout = bruteTimeout.value
+      } else if (mode.value === 'manual') {
+        body.codec = selectedCodec.value
+      }
+
+      try {
+        const r = await fetch(endpoint, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(body),
+        })
+        result.value = await r.json()
+        elapsed.value = ((performance.now() - t0) / 1000).toFixed(2)
+
+        if (result.value?.flags?.length > 0) {
+          showToast(` Captured ${result.value.flags.length} flag(s)!`)
+        }
+        refreshMemory()
+      } catch (e) {
+        result.value = { success: false, error: e.toString() }
+      } finally {
+        isProcessing.value = false
+      }
+    }
+
+    const runCodeSolver = async () => {
+      if (!codeText.value.trim() || isCodeProcessing.value) return
+      isCodeProcessing.value = true
+      codeResult.value = null
+
+      try {
+        const r = await fetch('/api/solve-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: codeText.value,
+            language: codeLanguage.value,
+            run_dynamically: runDynamically.value,
+            flag_pattern: codeFlagPattern.value || null
+          })
+        })
+        codeResult.value = await r.json()
+        if (codeResult.value?.success && codeResult.value.solves?.length) {
+          showToast(` Captured ${codeResult.value.solves.length} flag(s) from code!`)
+        } else {
+          showToast('Code analyzed, no flags solved.', true)
+        }
+        refreshMemory()
+      } catch (e) {
+        codeResult.value = { success: false, logs: e.toString(), extracted_literals: [], solves: [] }
+      } finally {
+        isCodeProcessing.value = false
+      }
+    }
+
+    const sendFeedback = async (codec, success) => {
+      await fetch('/api/feedback', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ codec, success }),
+      })
+      showToast(success ? `✔ Prior updated for ${codec}` : `✖ Penalized codec: ${codec}`, !success)
+      refreshMemory()
+    }
+
+    const decayMemory = async () => {
+      await fetch('/api/memory/decay', { method: 'POST' })
+      showToast('Confidence values decayed successfully.')
+      refreshMemory()
+    }
+
+    const clearMemory = async () => {
+      if (confirm('Are you sure you want to wipe all learned prior configurations?')) {
+        await fetch('/api/memory/clear', { method: 'POST' })
+        showToast('All adaptive memory cleared.')
+        refreshMemory()
+      }
+    }
+
+    const clearAll = () => {
+      inputText.value      = ''
+      result.value         = null
+      detectionHints.value = []
+      elapsed.value        = null
+    }
+
+    const clearCode = () => {
+      codeText.value = ''
+      codeResult.value = null
+    }
+
+    onMounted(() => {
+      fetchCodecs()
+      refreshMemory()
+      updateTime()
+      setInterval(updateTime, 30000) // update menu clock every 30s
+    })
+
+    return {
+      currentTab, currentTabLabel, inputText, mode, selectedCodec, bruteDepth, bruteTimeout,
+      codeText, codeLanguage, runDynamically, codeFlagPattern, codeResult, isCodeProcessing,
+      codecs, result, memory, isProcessing, detectionHints, elapsed, toast, liveTime, inputBytes,
+      run, runCodeSolver, clearAll, clearCode, copy, refreshMemory, sendFeedback, decayMemory, clearMemory,
+      onInputChange, truncate, scoreColor,
+    }
+  }
+}).mount('#app')
+</script>
+</body>
+</html>

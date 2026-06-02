@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ctf-decoder"
+version = "0.1.0"
+description = "A modular, extensible decoding suite built for competitive Capture The Flag challenges."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "CTF Player", email = "ctf@example.com" },
+]
+dependencies = [
+    "click>=8.1.7",
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.23.2",
+    "slowapi>=0.1.2",
+    "regex>=2023.10.3",
+    "rich>=13.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.2",
+    "hypothesis>=6.88.1",
+    "ruff>=0.1.3",
+    "mypy>=1.6.1",
+    "bandit>=1.7.5",
+]
+
+[project.scripts]
+ctfdec = "ctf_decoder.cli.main:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ctf_decoder"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
