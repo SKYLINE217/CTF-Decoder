@@ -214,4 +214,5 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*Built for the CTF community. Crack the flags, learn the techniques.*
+*Built for the CTF community. Crack the flags, learn the techniques. Deployable on Vercel.*
+
