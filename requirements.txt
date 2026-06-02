@@ -1,0 +1,5 @@
+fastapi>=0.104.1
+uvicorn[standard]>=0.23.2
+slowapi>=0.1.2
+regex>=2023.10.3
+rich>=13.6.0

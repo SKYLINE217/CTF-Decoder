@@ -43,3 +43,7 @@ target-version = "py310"
 [tool.mypy]
 python_version = "3.10"
 strict = true
+
+[tool.vercel]
+entrypoint = "ctf_decoder.web.app:app"
+
