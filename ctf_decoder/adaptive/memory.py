@@ -95,14 +95,28 @@ class MemoryDB:
     DECAY_HALF_LIFE_DAYS = 90
 
     def __init__(self, db_path: Optional[str] = None, event_log_path: Optional[str] = None):
+        import os
+        import tempfile
+        
+        is_serverless = os.environ.get("VERCEL") == "1" or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None
+        
         if db_path is None:
-            home = Path.home() / ".ctf_decoder"
-            home.mkdir(exist_ok=True)
-            db_path = str(home / "memory.db")
+            if is_serverless:
+                db_path = ":memory:"
+            else:
+                try:
+                    home = Path.home() / ".ctf_decoder"
+                    home.mkdir(exist_ok=True)
+                    db_path = str(home / "memory.db")
+                except Exception:
+                    db_path = ":memory:"
 
         if event_log_path is None:
-            home = Path(db_path).parent
-            event_log_path = str(home / "events.jsonl")
+            if db_path == ":memory:":
+                event_log_path = str(Path(tempfile.gettempdir()) / "events.jsonl")
+            else:
+                home = Path(db_path).parent
+                event_log_path = str(home / "events.jsonl")
 
         self.db_path = db_path
         self.event_log_path = Path(event_log_path)
@@ -228,8 +242,11 @@ class MemoryDB:
         ))
         self.conn.commit()
         # Append to immutable JSON Lines log
-        with self.event_log_path.open('a', encoding='utf-8') as f:
-            f.write(json.dumps(asdict(event)) + '\n')
+        try:
+            with self.event_log_path.open('a', encoding='utf-8') as f:
+                f.write(json.dumps(asdict(event)) + '\n')
+        except Exception:
+            pass
 
     def get_recent_solve_events(self, days: int = 90) -> List[SolveEvent]:
         c = self.conn.cursor()
