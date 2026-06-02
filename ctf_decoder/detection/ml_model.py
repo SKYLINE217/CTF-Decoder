@@ -1,12 +1,7 @@
 import os
 import math
-import joblib
-import numpy as np
-import scipy.sparse as sp
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 
 MODEL_PATH = Path(__file__).parent / "model.joblib"
 
@@ -161,6 +156,10 @@ class MLModelManager:
         """Loads the trained model components from disk if it exists."""
         if cls._model is not None:
             return True
+        try:
+            import joblib
+        except ImportError:
+            return False
         if MODEL_PATH.exists():
             try:
                 cls._model = joblib.load(MODEL_PATH)
@@ -175,6 +174,11 @@ class MLModelManager:
         Trains a heavy ensemble model (RandomForest + ExtraTrees) combined with
         character n-gram TF-IDF vectorization and saves it to disk.
         """
+        import joblib
+        import numpy as np
+        import scipy.sparse as sp
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
         from sklearn.model_selection import train_test_split
         from sklearn.metrics import classification_report, accuracy_score
         
@@ -264,6 +268,9 @@ class MLModelManager:
         """
         if not cls.load_model():
             return []
+            
+        import numpy as np
+        import scipy.sparse as sp
         
         num_feats = extract_features(data)
         text_rep = get_string_rep(data)
