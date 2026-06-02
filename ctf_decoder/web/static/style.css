@@ -1,30 +1,34 @@
 /* ── macOS Theme Design Tokens ───────────────────────────────────────── */
 :root {
-  --bg-gradient:  linear-gradient(135deg, #10061e 0%, #1c0e35 30%, #3a0e3a 60%, #4f152d 100%);
-  --win-bg:       rgba(28, 28, 30, 0.75);
-  --win-border:   rgba(255, 255, 255, 0.12);
-  --sidebar-bg:   rgba(22, 22, 23, 0.45);
-  --pane-bg:      rgba(38, 38, 41, 0.4);
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(255, 69, 58, 0.15) 0%, transparent 40%),
+                 radial-gradient(circle at 90% 10%, rgba(255, 149, 0, 0.15) 0%, transparent 35%),
+                 radial-gradient(circle at 80% 90%, rgba(10, 132, 255, 0.15) 0%, transparent 45%),
+                 radial-gradient(circle at 20% 80%, rgba(94, 92, 230, 0.18) 0%, transparent 40%),
+                 linear-gradient(135deg, #0b0718 0%, #150d24 100%);
+  --win-bg:       rgba(24, 24, 26, 0.72);
+  --win-border:   rgba(255, 255, 255, 0.1);
+  --sidebar-bg:   rgba(18, 18, 19, 0.5);
+  --pane-bg:      rgba(30, 30, 32, 0.35);
   --active-bg:    rgba(255, 255, 255, 0.1);
-  --hover-bg:     rgba(255, 255, 255, 0.05);
+  --hover-bg:     rgba(255, 255, 255, 0.06);
   
-  --text:         #e3e3e7;
-  --text-dim:     #9898a0;
+  --text:         #e5e5ea;
+  --text-dim:     #8e8e93;
   --text-bright:  #ffffff;
   
   /* Apple OS colors */
-  --apple-blue:   #007aff;
-  --apple-green:  #34c759;
-  --apple-orange: #ff9500;
-  --apple-red:    #ff3b30;
-  --apple-yellow: #ffcc00;
-  --apple-teal:   #30b0c7;
+  --apple-blue:   #0a84ff;
+  --apple-green:  #30d158;
+  --apple-orange: #ff9f0a;
+  --apple-red:    #ff453a;
+  --apple-yellow: #ffd60a;
+  --apple-teal:   #40c8e0;
   
   --mono:         'Fira Code', Menlo, Monaco, Consolas, monospace;
-  --sans:         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --radius-lg:    12px;
-  --radius-md:    8px;
-  --radius-sm:    5px;
+  --sans:         'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --radius-lg:    16px;
+  --radius-md:    10px;
+  --radius-sm:    6px;
 }
 
 /* ── Global resets ───────────────────────────────────────────────────── */
@@ -895,96 +899,165 @@ html, body {
 }
 
 
-/* ── Desktop Widget Clock ────────────────────────────────────────────── */
-.desktop-widget-clock {
+/* ── Desktop macOS Widget Grid ────────────────────────────────────────── */
+.macos-widgets-container {
   position: absolute;
   left: 60px;
-  top: calc(50% - 150px);
-  color: #ffffff;
+  top: calc(50% - 190px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   z-index: 5;
-  pointer-events: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  animation: widget-fade-in 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  pointer-events: auto;
+  animation: widget-fade-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes widget-fade-in {
-  from { opacity: 0; transform: translateX(-20px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: scale(0.95) translateX(-20px); }
+  to   { opacity: 1; transform: scale(1) translateX(0); }
 }
 
-.widget-time {
-  font-size: 96px;
-  font-weight: 700;
-  letter-spacing: -3px;
-  line-height: 0.9;
-  display: flex;
-  align-items: baseline;
-}
-
-.widget-time span {
-  font-size: 32px;
-  font-weight: 500;
-  margin-left: 12px;
-  text-transform: lowercase;
-  letter-spacing: -1px;
-}
-
-.widget-date {
-  font-size: 20px;
-  font-weight: 600;
-  margin-top: 14px;
-  opacity: 0.95;
-  letter-spacing: -0.5px;
-}
-
-.widget-player {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 28px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  width: max-content;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-}
-
-.player-icon {
-  font-size: 20px;
-  animation: pulse-music 2s infinite ease-in-out;
-}
-
-@keyframes pulse-music {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-}
-
-.player-details {
+.mac-desktop-widget {
+  width: 170px;
+  height: 170px;
+  border-radius: 24px;
+  background: rgba(28, 28, 30, 0.3);
+  backdrop-filter: blur(25px) saturate(140%);
+  -webkit-backdrop-filter: blur(25px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  padding: 18px;
+  color: #ffffff;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  font-family: var(--sans);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
+}
+
+.mac-desktop-widget:hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.widget-clock {
+  justify-content: flex-start;
   gap: 2px;
 }
 
-.player-title {
+.widget-clock-time {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.widget-clock-ampm {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1;
+  margin-bottom: auto;
+  margin-top: 2px;
+}
+
+.widget-clock-day {
   font-size: 11px;
   font-weight: 700;
+  color: var(--apple-blue);
+  letter-spacing: 0.8px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.widget-clock-date {
+  font-size: 19px;
+  font-weight: 700;
   color: #ffffff;
-  letter-spacing: 0.2px;
+  line-height: 1.2;
 }
 
-.player-subtitle {
-  font-size: 10px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+/* Header style for Widgets */
+.widget-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  line-height: 1;
 }
 
-/* Hide widget on narrower viewports to prevent overlap with the central window */
-@media (max-width: 1650px) {
-  .desktop-widget-clock {
+.widget-icon {
+  font-size: 11px;
+}
+
+.widget-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.status-dot-pulse {
+  width: 8px;
+  height: 8px;
+  background-color: var(--apple-green);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(48, 209, 88, 0.6);
+  animation: widget-dot-glow 2s infinite ease-in-out;
+}
+
+@keyframes widget-dot-glow {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+
+.status-text {
+  font-size: 19px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.widget-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  font-size: 11px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.detail-row span:last-child {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.platform-badge {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Hide widgets container on narrower viewports to prevent overlap */
+@media (max-width: 1700px) {
+  .macos-widgets-container {
     display: none;
   }
 }

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CTF Decoder — macOS Workspace</title>
   <meta name="description" content="Adaptive CTF decoding toolkit with self-learning engine, brute-force mode, code solving, and flag detection.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=4">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=5">
 </head>
 <body>
 <div id="app" v-cloak>
@@ -33,15 +33,39 @@
   <!-- ── macOS Desktop / Floating Window Shell ────────────────────────── -->
   <div class="macos-desktop">
 
-    <!-- macOS Desktop Widget Clock -->
-    <div class="desktop-widget-clock">
-      <div class="widget-time">{{ widgetTime }} <span>{{ widgetAmPm }}</span></div>
-      <div class="widget-date">{{ widgetDate }}</div>
-      <div class="widget-player">
-        <span class="player-icon">⚡</span>
-        <div class="player-details">
-          <div class="player-title">CTF Autopilot Active</div>
-          <div class="player-subtitle">Decoders operational</div>
+    <!-- macOS Desktop Widgets Container -->
+    <div class="macos-widgets-container">
+      <!-- Clock Widget -->
+      <div class="mac-desktop-widget widget-clock">
+        <div class="widget-header">
+          <span class="widget-icon">⏰</span>
+          <span class="widget-title">Clock</span>
+        </div>
+        <div class="widget-clock-time">{{ widgetTime }}</div>
+        <div class="widget-clock-ampm">{{ widgetAmPm }}</div>
+        <div class="widget-clock-day">{{ widgetDay }}</div>
+        <div class="widget-clock-date">{{ widgetDate }}</div>
+      </div>
+
+      <!-- CTF Engine Status Widget -->
+      <div class="mac-desktop-widget widget-status">
+        <div class="widget-header">
+          <span class="widget-icon">⚡</span>
+          <span class="widget-title">CTF Engine</span>
+        </div>
+        <div class="widget-status-indicator">
+          <span class="status-dot-pulse"></span>
+          <span class="status-text">Active</span>
+        </div>
+        <div class="widget-details">
+          <div class="detail-row">
+            <span>Priors:</span>
+            <span>{{ memory ? memory.priors.length : 0 }}</span>
+          </div>
+          <div class="detail-row">
+            <span>Platform:</span>
+            <span class="platform-badge">{{ memory && memory.platform_hint ? memory.platform_hint : 'Auto' }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -590,6 +614,7 @@ createApp({
     const liveTime       = ref('')
     const widgetTime     = ref('')
     const widgetAmPm     = ref('')
+    const widgetDay      = ref('')
     const widgetDate     = ref('')
 
     let detectTimer = null
@@ -622,16 +647,16 @@ createApp({
       liveTime.value = `${day} ${hr}:${min} ${ampm}`
 
       // Update widget values
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
       const daysFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
       const month = months[d.getMonth()]
       const dateNum = d.getDate()
-      const year = d.getFullYear()
       const dayFull = daysFull[d.getDay()]
       
       widgetTime.value = `${hr}:${min}`
       widgetAmPm.value = ampm.toLowerCase()
-      widgetDate.value = `Today is ${dayFull}, ${dateNum} ${month}, ${year}.`
+      widgetDay.value = dayFull.toUpperCase()
+      widgetDate.value = `${dateNum} ${month}`
     }
 
     const strToB64 = s => {
@@ -822,7 +847,7 @@ createApp({
       currentTab, currentTabLabel, inputText, mode, selectedCodec, bruteDepth, bruteTimeout,
       codeText, codeLanguage, runDynamically, codeFlagPattern, codeResult, isCodeProcessing,
       codecs, result, memory, isProcessing, detectionHints, elapsed, toast, liveTime, inputBytes,
-      widgetTime, widgetAmPm, widgetDate,
+      widgetTime, widgetAmPm, widgetDay, widgetDate,
       run, runCodeSolver, clearAll, clearCode, copy, refreshMemory, sendFeedback, decayMemory, clearMemory,
       onInputChange, truncate, scoreColor,
     }
